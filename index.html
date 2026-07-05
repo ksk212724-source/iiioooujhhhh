@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>IGNIS</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #0c0805; height: 100%; }
+  body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+  .font-display { font-family: 'Sora', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  #app {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    position: relative;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bg-glow {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 130% 65% at 50% 120%, rgba(255,138,36,0.32) 0%, rgba(184,64,18,0.16) 38%, rgba(20,12,8,0.0) 68%),
+      linear-gradient(180deg, #0e0906 0%, #150f0a 55%, #1d130b 100%);
+    animation: crucibleFlicker 3.6s ease-in-out infinite;
+  }
+  @keyframes crucibleFlicker { 0%,100% { opacity:.85 } 50% { opacity:1 } }
+
+  .haze-wrap { position:absolute; inset:0; overflow:hidden; opacity:.7; pointer-events:none; }
+  .haze { position:absolute; border-radius:50%; filter: blur(38px); animation: hazeDrift 18s ease-in-out infinite; }
+  .haze1 { top:-40px; left:-64px; width:320px; height:320px; background:rgba(234,88,12,0.25); }
+  .haze2 { bottom:0; right:-80px; width:384px; height:384px; background:rgba(245,158,11,0.15); animation-delay:-6s; }
+  @keyframes hazeDrift { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(-2%,-1.5%) scale(1.04)} 100%{transform:translate(0,0) scale(1)} }
+
+  .veil { position:absolute; inset:0; background:rgba(0,0,0,0.1); pointer-events:none; }
+
+  .content { position:relative; display:flex; flex-direction:column; min-height:100vh; min-height:100dvh; padding-bottom: 128px; }
+
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding: 22px 20px 0; }
+  .brand { display:flex; align-items:center; gap:8px; }
+  .brand span { color:#fff; font-weight:800; font-size:18px; letter-spacing:-0.02em; }
+  .league-pill { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:rgba(26,18,11,0.55); border:1px solid rgba(58,37,21,0.6); backdrop-filter: blur(8px); }
+  .league-pill span { font-size:12px; font-weight:600; }
+
+  /* ---- forge-panel: shared redesigned card shell with a molten top seam ---- */
+  .card, .forge-panel { position:relative; overflow:hidden; border-radius:20px; background:rgba(26,18,11,0.5); border:1px solid rgba(58,37,21,0.6); backdrop-filter: blur(8px); padding: 14px 16px; }
+  .forge-panel::before, .card::before {
+    content:""; position:absolute; top:0; left:14%; right:14%; height:2px;
+    background:linear-gradient(90deg, transparent, #fb923c, transparent); opacity:.55;
+  }
+
+  .season-card { margin: 16px 20px 0; }
+  .season-row { display:flex; align-items:center; gap:6px; color:rgba(252,211,170,0.5); font-size:12px; font-weight:500; margin-bottom:8px; }
+  .season-tag { display:inline-block; margin-left:auto; font-size:10px; font-weight:700; letter-spacing:.08em; color:#fdba74; background:rgba(253,186,116,0.1); border:1px solid rgba(253,186,116,0.25); padding:2px 8px; border-radius:999px; }
+  .season-timer { display:flex; align-items:baseline; gap:12px; color:#fff; }
+  .season-timer .num { font-size:20px; font-weight:700; }
+  .season-timer .unit { font-size:11px; color:rgba(252,211,170,0.4); font-family:'Inter'; margin-left:2px; }
+  .season-timer .sec { color:#fb923c; }
+  .season-bar-track { margin-top:10px; height:4px; border-radius:999px; background:#3a2515; overflow:hidden; }
+  .season-bar-fill { height:100%; border-radius:999px; background: linear-gradient(90deg,#f59e0b,#fb923c); transition: width 1s linear; }
+
+  .balance-wrap { text-align:center; margin-top:22px; }
+  .balance-label { color:rgba(252,211,170,0.4); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .balance-value { font-family:'JetBrains Mono',monospace; font-size:44px; font-weight:700; color:rgba(255,255,255,0.92); margin-top:4px; text-shadow:0 0 24px rgba(255,170,80,.35); }
+  .balance-seam { width:120px; height:3px; margin:10px auto 0; border-radius:999px; background:linear-gradient(90deg, transparent, #fbbf24, #fb923c, #fbbf24, transparent); background-size:200% 100%; animation: seamFlow 3s linear infinite; filter: drop-shadow(0 0 6px rgba(251,146,60,.55)); }
+  @keyframes seamFlow { 0%{background-position:0% 0} 100%{background-position:200% 0} }
+
+  .tabpanel { flex:1; padding: 22px 20px 0; }
+
+  .coin-btn-wrap { display:flex; justify-content:center; }
+  .coin-btn { position:relative; width:256px; height:256px; border-radius:50%; border:none; background:transparent; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer; }
+
+  /* ---- Coin design: unchanged / original (do not alter) ---- */
+  .coin-inner {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    transition: transform .09s;
+    animation: coinPulse 2.8s ease-in-out infinite;
+    overflow: hidden;
+    border: 4px solid #3a2515;
+    box-shadow: 0 0 30px rgba(251, 146, 60, 0.2);
+    position: relative;
+    background:#1c1108;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .coin-inner.pressed { transform: scale(.9); }
+  .coin-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .coin-icon { width:70%; height:70%; }
+  .top-coin-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #3a2515; background:#1c1108; display:flex; align-items:center; justify-content:center; }
+  .top-coin-photo img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  .top-coin-photo svg { width:60%; height:60%; }
+
+  @keyframes coinPulse { 0%,100%{filter:drop-shadow(0 0 34px rgba(255,140,40,.4))} 50%{filter:drop-shadow(0 0 56px rgba(255,180,60,.6))} }
+
+  .ember { position:absolute; bottom:32px; width:6px; height:6px; border-radius:50%; background:#fdba74; animation: emberRise 3.6s ease-in infinite; z-index: 2; }
+  @keyframes emberRise { 0%{opacity:0; transform:translate(0,0)} 12%{opacity:1} 100%{opacity:0; transform:translate(var(--dx),-160px)} }
+
+  .floater { position:absolute; font-family:'JetBrains Mono',monospace; font-weight:700; color:#fdba74; font-size:20px; pointer-events:none; animation: floatUp .85s ease-out forwards; z-index:5; }
+  @keyframes floatUp { 0%{opacity:1; transform:translateY(0) scale(1)} 100%{opacity:0; transform:translateY(-70px) scale(1.35)} }
+
+  .stat-grid { margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .stat-box { position:relative; overflow:hidden; border-radius:16px; background:rgba(26,18,11,0.5); border:1px solid rgba(58,37,21,0.6); padding:12px 16px; text-align:center; }
+  .stat-box::before { content:""; position:absolute; top:0; left:14%; right:14%; height:2px; background:linear-gradient(90deg, transparent, #fb923c, transparent); opacity:.55; }
+  .stat-box .lbl { color:rgba(252,211,170,0.4); font-size:12px; }
+  .stat-box .val { font-family:'JetBrains Mono',monospace; font-weight:700; color:#fff; font-size:17px; margin-top:2px; }
+
+  .boost-card { border-radius:20px; background:rgba(26,18,11,0.5); border:1px solid rgba(58,37,21,0.6); padding:16px; margin-bottom:12px; position:relative; overflow:hidden; }
+  .boost-card::before { content:""; position:absolute; top:0; left:14%; right:14%; height:2px; background:linear-gradient(90deg, transparent, #fb923c, transparent); opacity:.55; }
+  .boost-head { display:flex; align-items:center; gap:8px; }
+  .boost-icon { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(251,191,36,0.1); flex-shrink:0; }
+  .boost-icon.auto { background:rgba(253,186,116,0.1); }
+  .boost-icon.quest { background:rgba(196,181,253,0.12); }
+  .quest-status { font-size:12px; font-weight:600; color:#4ade80; display:flex; align-items:center; gap:6px; margin-top:10px; }
+  .quest-actions { display:flex; gap:8px; margin-top:12px; }
+  .quest-actions .boost-btn { margin-top:0; }
+  .boost-title { color:#fff; font-size:14px; font-weight:600; }
+  .boost-sub { color:rgba(252,211,170,0.4); font-size:12px; }
+  .boost-btn { margin-top:12px; width:100%; padding:11px; border-radius:12px; border:none; font-weight:600; font-size:13px; background:linear-gradient(90deg,#fbbf24,#ea580c); color:#0c0805; cursor:pointer; }
+  .boost-btn.auto-btn { background:linear-gradient(90deg,#fdba74,#ea580c); }
+  .boost-btn:disabled { opacity:.3; cursor:not-allowed; }
+  .boost-note { border-radius:16px; background:rgba(26,18,11,0.25); border:1px solid rgba(58,37,21,0.4); padding:16px; display:flex; gap:8px; }
+  .boost-note p { color:rgba(252,211,170,0.4); font-size:12px; line-height:1.5; margin:0; }
+
+  .skins-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-top:12px; }
+  .skin-item { aspect-ratio:1; border-radius:14px; border:2px solid #3a2515; background:#1c1108; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative; }
+  .skin-item img { width:100%; height:100%; object-fit:cover; }
+  .skin-item svg { width:60%; height:60%; }
+  .skin-item.selected { border-color:#fb923c; box-shadow:0 0 12px rgba(251,146,60,.5); }
+
+  .league-progress { border-radius:20px; background:rgba(26,18,11,0.5); border:1px solid rgba(58,37,21,0.6); padding:16px; margin-bottom:12px; position:relative; overflow:hidden; }
+  .league-progress::before { content:""; position:absolute; top:0; left:14%; right:14%; height:2px; background:linear-gradient(90deg, transparent, #fb923c, transparent); opacity:.55; }
+  .league-progress-top { display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; }
+  .league-progress-top .a { color:rgba(252,211,170,0.4); }
+  .league-progress-top .b { color:#e2e8f0; font-weight:500; }
+  .league-progress-track { height:8px; border-radius:999px; background:#3a2515; overflow:hidden; }
+  .league-progress-fill { height:100%; border-radius:999px; }
+
+  .league-row { border-radius:18px; border:1px solid rgba(58,37,21,0.4); background:rgba(26,18,11,0.2); padding:16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .league-row.current { background:rgba(26,18,11,0.7); border:1px solid #4a2f1a; }
+  .league-row-left { display:flex; align-items:center; gap:12px; }
+  .league-icon { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#241608; }
+  .league-icon.dim { opacity:.4; }
+  .league-name { font-size:14px; font-weight:600; color:rgba(252,211,170,0.4); }
+  .league-name.reached { color:#fff; }
+  .league-thresh { color:rgba(252,211,170,0.4); font-size:12px; }
+  .league-current-tag { font-size:12px; font-weight:600; color:#fb923c; }
+
+  .promo-card, .ref-card { border-radius:20px; background:rgba(26,18,11,0.5); border:1px solid rgba(58,37,21,0.6); padding:20px; text-align:center; margin-bottom:12px; position:relative; overflow:hidden; }
+  .promo-card::before, .ref-card::before { content:""; position:absolute; top:0; left:14%; right:14%; height:2px; background:linear-gradient(90deg, transparent, #fb923c, transparent); opacity:.55; }
+  .promo-icon { width:48px; height:48px; border-radius:50%; background:rgba(251,191,36,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+  .promo-card h3, .ref-card h3 { color:#fff; font-size:14px; font-weight:600; margin:0 0 4px; }
+  .promo-card p, .ref-card p { color:rgba(252,211,170,0.4); font-size:12px; margin:0 0 16px; }
+  .field { width:100%; text-align:center; background:#0c0805; border:1px solid #3a2515; border-radius:12px; padding:11px; color:#fff; font-size:14px; letter-spacing:.15em; text-transform:uppercase; outline:none; }
+  .field::placeholder { color:rgba(252,211,170,0.2); }
+  .field:focus { border-color:#fbbf24; }
+  .field:disabled { opacity:.4; }
+  .submit-btn { margin-top:12px; width:100%; padding:11px; border-radius:12px; border:none; font-weight:600; font-size:13px; background:linear-gradient(90deg,#fbbf24,#ea580c); color:#0c0805; cursor:pointer; }
+  .submit-btn.ref { background:linear-gradient(90deg,#fdba74,#ea580c); }
+  .submit-btn:disabled { opacity:.3; cursor:not-allowed; }
+  .msg { margin-top:12px; font-size:12px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .msg.ok { color:#fb923c; }
+  .msg.err { color:#fb7185; }
+
+  .code-row { display:flex; align-items:center; gap:8px; background:#0c0805; border:1px solid #3a2515; border-radius:12px; padding:12px 16px; }
+  .code-row .code { flex:1; font-family:'JetBrains Mono',monospace; font-size:18px; letter-spacing:.3em; color:#fdba74; text-align:center; }
+  .copy-btn { width:32px; height:32px; border-radius:8px; background:#241608; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .code-hint { color:rgba(252,211,170,0.25); font-size:10px; margin-top:8px; }
+
+  /* ---- Redesigned floating dock navbar ---- */
+  .navbar {
+    position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+    width:calc(100% - 28px); max-width:452px;
+    background:rgba(18,12,7,0.82); border:1px solid rgba(120,72,30,0.45);
+    border-radius:26px; backdrop-filter: blur(20px);
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+    padding: 10px 6px; display:flex; justify-content:space-between; z-index:20;
+  }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px; background:none; border:none; cursor:pointer; }
+  .nav-btn svg { width:20px; height:20px; }
+  .nav-label { font-size:10px; font-weight:500; }
+  .dim-icon { color:rgba(252,211,170,0.25); }
+  .active-icon { color:#fb923c; filter: drop-shadow(0 0 6px rgba(251,146,60,.6)); }
+
+  .hidden { display:none !important; }
+
+  .loading-screen { min-height:100vh; min-height:100dvh; display:flex; align-items:center; justify-content:center; background:#0c0805; }
+  .spinner { width:32px; height:32px; border:3px solid rgba(251,191,36,0.25); border-top-color:#fbbf24; border-radius:50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Season recap / intro overlay ---- */
+  .intro-overlay {
+    position:fixed; inset:0; z-index:50; background:radial-gradient(ellipse 120% 60% at 50% 100%, rgba(255,138,36,0.22), rgba(12,8,5,0.97) 60%);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .intro-card { width:100%; max-width:420px; border-radius:24px; background:rgba(26,18,11,0.85); border:1px solid rgba(120,72,30,0.5); padding:26px 22px; text-align:center; position:relative; overflow:hidden; }
+  .intro-card::before { content:""; position:absolute; top:0; left:10%; right:10%; height:2px; background:linear-gradient(90deg, transparent, #fb923c, transparent); }
+  .intro-icon { width:56px; height:56px; border-radius:50%; background:rgba(251,191,36,0.12); display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .intro-title { color:#fff; font-family:'Sora'; font-weight:800; font-size:20px; margin:0 0 6px; }
+  .intro-sub { color:rgba(252,211,170,0.5); font-size:13px; margin:0 0 18px; line-height:1.5; }
+  .intro-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .intro-stat { border-radius:14px; background:rgba(12,8,5,0.6); border:1px solid #3a2515; padding:12px; }
+  .intro-stat .l { color:rgba(252,211,170,0.4); font-size:11px; }
+  .intro-stat .v { font-family:'JetBrains Mono'; font-weight:700; color:#fff; font-size:16px; margin-top:2px; }
+  .intro-arrow { color:#fb923c; font-size:13px; font-weight:600; margin:10px 0; }
+  .intro-convert { border-radius:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); padding:16px; margin-bottom:18px; }
+  .intro-convert .l { color:rgba(252,211,170,0.5); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .intro-convert .v { font-family:'JetBrains Mono'; font-weight:800; color:#fdba74; font-size:26px; margin-top:4px; }
+  .intro-btn { width:100%; padding:13px; border-radius:14px; border:none; font-weight:700; font-size:14px; background:linear-gradient(90deg,#fbbf24,#ea580c); color:#0c0805; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading-screen"><div class="spinner"></div></div>
+
+<div id="introOverlay" class="intro-overlay hidden">
+  <div class="intro-card">
+    <div class="intro-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"/></svg>
+    </div>
+    <h2 class="intro-title">Итоги Сезона 1</h2>
+    <p class="intro-sub">Сезон 1 завершён. Твой результат зафиксирован и переносится в Сезон 2 по курсу 1&nbsp;:&nbsp;10&nbsp;000.</p>
+    <div class="intro-stats">
+      <div class="intro-stat"><div class="l">Заработано (S1)</div><div class="v" id="introOldEarned">0</div></div>
+      <div class="intro-stat"><div class="l">Тапов (S1)</div><div class="v" id="introOldTaps">0</div></div>
+    </div>
+    <div class="intro-arrow">↓ конвертация 1 : 10 000 ↓</div>
+    <div class="intro-convert">
+      <div class="l">Стартовый баланс Сезона 2</div>
+      <div class="v" id="introConverted">0 IGNIS</div>
+    </div>
+    <button class="intro-btn" id="introContinueBtn">Начать Сезон 2</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="bg-glow"></div>
+  <div class="haze-wrap"><div class="haze haze1"></div><div class="haze haze2"></div></div>
+  <div class="veil"></div>
+
+  <div class="content">
+    <div class="topbar">
+      <div class="brand">
+        <div class="top-coin-photo" id="topCoinContainer"></div>
+        <span class="font-display">IGNIS</span>
+      </div>
+      <div class="league-pill" id="leaguePill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" id="trophyIconTop"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="leagueName"></span>
+      </div>
+    </div>
+
+    <div class="season-card card">
+      <div class="season-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="seasonLabel">ДО СЕЗОНА 3</span>
+        <span class="season-tag">СЕЗОН 2</span>
+      </div>
+      <div class="season-timer font-mono">
+        <span class="num"><span id="td">0</span><span class="unit">д</span></span>
+        <span class="num"><span id="th">00</span><span class="unit">ч</span></span>
+        <span class="num"><span id="tm">00</span><span class="unit">м</span></span>
+        <span class="num sec"><span id="ts">00</span><span class="unit">с</span></span>
+      </div>
+      <div class="season-bar-track"><div class="season-bar-fill" id="seasonBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="balance-wrap">
+      <div class="balance-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="color:#fb923c"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Баланс
+      </div>
+      <div class="balance-value font-mono" id="balanceVal">0</div>
+      <div class="balance-seam"></div>
+    </div>
+
+    <!-- TAP TAB -->
+    <div class="tabpanel" data-panel="tap">
+      <div class="coin-btn-wrap">
+        <button class="coin-btn" id="coinBtn" aria-label="Тапнуть по IGNIS">
+          <span class="ember" style="left:14%; animation-delay:0s; --dx:12px"></span>
+          <span class="ember" style="left:25%; animation-delay:.45s; --dx:-17px"></span>
+          <span class="ember" style="left:36%; animation-delay:.9s; --dx:22px"></span>
+          <span class="ember" style="left:47%; animation-delay:1.35s; --dx:-27px"></span>
+          <span class="ember" style="left:58%; animation-delay:1.8s; --dx:32px"></span>
+          <span class="ember" style="left:69%; animation-delay:2.25s; --dx:-37px"></span>
+          <span class="ember" style="left:80%; animation-delay:2.7s; --dx:42px"></span>
+
+          <div class="coin-inner" id="coinInner"></div>
+        </button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-box"><div class="lbl">За тап</div><div class="val" id="perTapVal">+1</div></div>
+        <div class="stat-box"><div class="lbl">Всего тапов</div><div class="val" id="totalTapsVal">0</div></div>
+      </div>
+    </div>
+
+    <!-- BOOST TAB -->
+    <div class="tabpanel hidden" data-panel="boost">
+      <div class="boost-card">
+        <div class="boost-head">
+          <div class="boost-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:#fbbf24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+          <div><div class="boost-title">Сила тапа</div><div class="boost-sub" id="tapLevelSub">Уровень 1 · сейчас +1 за тап</div></div>
+        </div>
+        <button class="boost-btn" id="buyTapBtn">Улучшить</button>
+      </div>
+      <div class="boost-card">
+        <div class="boost-head">
+          <div class="boost-icon auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:#fdba74"><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div><div class="boost-title">Автокликер</div><div class="boost-sub" id="autoLevelSub">Выключен</div></div>
+        </div>
+        <button class="boost-btn auto-btn" id="buyAutoBtn">Улучшить</button>
+      </div>
+      <div class="boost-card">
+        <div class="boost-head">
+          <div class="boost-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:#fbbf24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div><div class="boost-title">Скины</div><div class="boost-sub">Выбери облик своей монеты</div></div>
+        </div>
+        <div class="skins-grid" id="skinsGrid"></div>
+      </div>
+      <div class="boost-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:rgba(252,211,170,.4);flex-shrink:0;margin-top:2px"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p>Каждое улучшение дороже предыдущего. Копи IGNIS тапами, чтобы расти быстрее.</p>
+      </div>
+    </div>
+
+    <!-- LEAGUE TAB -->
+    <div class="tabpanel hidden" data-panel="league">
+      <div id="season1RecapWrap"></div>
+      <div id="leagueProgressWrap"></div>
+      <div id="leagueList"></div>
+    </div>
+
+    <!-- REFERRAL TAB -->
+    <div class="tabpanel hidden" data-panel="referral">
+      <div class="ref-card">
+        <div class="promo-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="color:#fbbf24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3>Твой реферальный код</h3>
+        <p id="refExplain"></p>
+        <div class="code-row">
+          <span class="code" id="refCodeText"></span>
+          <button class="copy-btn" id="copyBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:rgba(252,211,170,.4)" id="copyIcon"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/></svg></button>
+        </div>
+        <div class="code-hint">Код виден другим игрокам, которые его вводят</div>
+      </div>
+
+      <div class="stat-grid" style="margin-top:0">
+        <div class="stat-box"><div class="lbl">Приглашено</div><div class="val" id="refCountVal">0</div></div>
+        <div class="stat-box"><div class="lbl">Заработано</div><div class="val" id="refEarnedVal">0</div></div>
+      </div>
+
+      <div class="ref-card" style="margin-top:12px">
+        <h3>Есть чужой код?</h3>
+        <p id="refInputHint">Введи код друга и получи бонус</p>
+        <input class="field" id="refInputField" placeholder="Код друга" />
+        <button class="submit-btn ref" id="submitRefBtn">Активировать код</button>
+        <div class="msg hidden" id="refMsg"></div>
+      </div>
+    </div>
+
+    <!-- QUESTS TAB -->
+    <div class="tabpanel hidden" data-panel="quests">
+      <div id="questsList"></div>
+      <div class="boost-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:rgba(252,211,170,.4);flex-shrink:0;margin-top:2px"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p>Нажми «Перейти», подпишись/запусти бота, вернись и нажми «Проверить», чтобы получить награду.</p>
+      </div>
+    </div>
+
+    <!-- PROMO TAB -->
+    <div class="tabpanel hidden" data-panel="promo">
+      <div class="promo-card">
+        <div class="promo-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="color:#fbbf24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+        <h3>Промокод</h3>
+        <p>Введи код, чтобы получить бонусные IGNIS</p>
+        <input class="field" id="promoInputField" placeholder="Введите код" />
+        <button class="submit-btn" id="submitPromoBtn">Активировать</button>
+        <div class="msg hidden" id="promoMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="navbar">
+    <button class="nav-btn" data-tab="tap">
+      <svg class="active-icon" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <span class="nav-label active-icon">Тап</span>
+    </button>
+    <button class="nav-btn" data-tab="boost">
+      <svg class="dim-icon" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-label dim-icon">Прокачка</span>
+    </button>
+    <button class="nav-btn" data-tab="league">
+      <svg class="dim-icon" viewBox="0 0 24 24" fill="none"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-label dim-icon">Лига</span>
+    </button>
+    <button class="nav-btn" data-tab="referral">
+      <svg class="dim-icon" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-label dim-icon">Друзья</span>
+    </button>
+    <button class="nav-btn" data-tab="quests">
+      <svg class="dim-icon" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-label dim-icon">Квесты</span>
+    </button>
+    <button class="nav-btn" data-tab="promo">
+      <svg class="dim-icon" viewBox="0 0 24 24" fill="none"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <span class="nav-label dim-icon">Промо</span>
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Telegram integration ----------
+  var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    try { tg.setHeaderColor('#0c0805'); } catch (e) {}
+    try { tg.setBackgroundColor('#0c0805'); } catch (e) {}
+  }
+
+  function getUserId() {
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+      return String(tg.initDataUnsafe.user.id);
+    }
+    var local = localStorage.getItem("ignis-local-uid");
+    if (!local) {
+      local = "local-" + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem("ignis-local-uid", local);
+    }
+    return local;
+  }
+  var USER_ID = getUserId();
+  var STORE_KEY = "ignis-player:" + USER_ID;
+
+  // ---------- Config ----------
+  var LEAGUES = [
+    { name: "Бронза", threshold: 0, color: "#d97706", bar: "#d97706" },
+    { name: "Серебро", threshold: 10000, color: "#cbd5e1", bar: "#cbd5e1" },
+    { name: "Золото", threshold: 100000, color: "#facc15", bar: "#facc15" },
+    { name: "Платина", threshold: 1000000, color: "#67e8f9", bar: "#67e8f9" },
+    { name: "Алмаз", threshold: 10000000, color: "#7dd3fc", bar: "#7dd3fc" },
+    { name: "Мастер", threshold: 100000000, color: "#c4b5fd", bar: "#c4b5fd" }
+  ];
+  var TAP_BASE_COST = 1000;
+  var AUTO_BASE_COST = 5000;
+  var AUTO_COST_MULT = 2.2;
+  var PROMO_CODES = [
+    { code: "IGNIS10K",  reward: 10000 },
+    { code: "IGNIS50K",  reward: 50000 },
+    { code: "IGNIS100K", reward: 100000 },
+    { code: "IGNIS1M",   reward: 1000000 },
+    { code: "IGNISMAX",  reward: 9999999999 }
+  ];
+  var QUESTS = [
+    { id: "q1", title: "Подписаться на канал", sub: "Mayami", link: "https://t.me/+a7mNpb6CVzkxNGIy", reward: 1500 },
+    { id: "q2", title: "Запустить бота", sub: "MAYAMI AI — @kirill10Aibot", link: "https://t.me/kirill10Aibot", reward: 1500 },
+    { id: "q3", title: "Запустить бота", sub: "VPN", link: "https://t.me/Gjsmcgzkgfbot?start=EP2G3X", reward: 1500 }
+  ];
+  var QUEST_CHECK_DELAY_MS = 5000; // must wait a bit after opening the link before "Проверить" grants the reward
+  var REFERRAL_BONUS_FOR_INVITEE = 15000;
+  var REFERRAL_BONUS_FOR_INVITER = 20000;
+  var CONVERSION_RATE = 10000; // Season 1 -> Season 2
+
+  // Global, synced-for-everyone countdown: starts ticking at 15:00 MSK today.
+  var SEASON2_START = new Date("2026-07-05T15:00:00+03:00").getTime();
+  var SEASON2_DURATION = 3 * 24 * 60 * 60 * 1000; // assumed same length as before; adjust if needed
+  var SEASON2_END = SEASON2_START + SEASON2_DURATION;
+
+  var SKIN_COUNT = 5; // photo1.png ... photo5.png, plus default (index 0)
+
+  function fmt(n) { return Math.floor(n || 0).toLocaleString("ru-RU"); }
+  function tapCost(level) { return TAP_BASE_COST * Math.pow(2, level - 1); }
+  function autoCost(level) { return Math.round(AUTO_BASE_COST * Math.pow(AUTO_COST_MULT, level)); }
+  function getLeagueIndex(totalEarned) {
+    var idx = 0;
+    for (var i = 0; i < LEAGUES.length; i++) if (totalEarned >= LEAGUES[i].threshold) idx = i;
+    return idx;
+  }
+  function randomCode() {
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "";
+    for (var i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+  function defaultPlayer() {
+    return {
+      balance: 0, totalEarned: 0, totalTaps: 0, clickPower: 1, tapLevel: 1,
+      autoClickerLevel: 0,
+      skin: 0,
+      usedPromoCodes: [],
+      promoUsed: false, // legacy field, unused now
+      referralCode: "", referredBy: null, referralCount: 0, referralEarned: 0,
+      season2Migrated: false,
+      season1Recap: null,
+      completedQuests: [],
+      openedQuests: {}
+    };
+  }
+
+  // Original coin icon markup (Season-1 design — untouched)
+  var COIN_ICON_SVG =
+    '<svg class="coin-icon" viewBox="0 0 100 100" fill="none" stroke="#c2792f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M50 12 L50 38 M50 38 L30 27 M50 38 L70 46 M50 38 L50 60 M50 60 L32 80 M50 60 L66 92 M50 60 L50 90"/>' +
+    '</svg>';
+  var TOP_COIN_ICON_SVG =
+    '<svg viewBox="0 0 100 100" fill="none" stroke="#c2792f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M50 12 L50 38 M50 38 L30 27 M50 38 L70 46 M50 38 L50 60 M50 60 L32 80 M50 60 L66 92 M50 60 L50 90"/>' +
+    '</svg>';
+
+  function skinMarkup(skinIndex, forTop) {
+    if (!skinIndex) return forTop ? TOP_COIN_ICON_SVG : COIN_ICON_SVG;
+    var src = "photo" + skinIndex + ".png";
+    return '<img src="' + src + '" alt="skin" class="' + (forTop ? "" : "coin-photo") + '" onerror="this.style.display=\'none\'">';
+  }
+
+  // ---------- Local persistence ----------
+  function loadPlayer() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function savePlayer() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(player)); } catch (e) {}
+  }
+  function registerCode(code) {
+    try {
+      var map = JSON.parse(localStorage.getItem("ignis-codes") || "{}");
+      map[code] = USER_ID;
+      localStorage.setItem("ignis-codes", JSON.stringify(map));
+    } catch (e) {}
+  }
+  function codeExists(code) {
+    try {
+      var map = JSON.parse(localStorage.getItem("ignis-codes") || "{}");
+      return !!map[code];
+    } catch (e) { return false; }
+  }
+  function pendingKey(code) { return "ignis-pending:" + code; }
+  function addPendingReward(code) {
+    try {
+      var raw = localStorage.getItem(pendingKey(code));
+      var pending = raw ? JSON.parse(raw) : { count: 0, amount: 0 };
+      pending.count = (pending.count || 0) + 1;
+      pending.amount = (pending.amount || 0) + REFERRAL_BONUS_FOR_INVITER;
+      localStorage.setItem(pendingKey(code), JSON.stringify(pending));
+    } catch (e) {}
+  }
+  function claimPending() {
+    if (!player.referralCode) return;
+    try {
+      var raw = localStorage.getItem(pendingKey(player.referralCode));
+      if (!raw) return;
+      var pending = JSON.parse(raw);
+      if (pending && (pending.amount > 0 || pending.count > 0)) {
+        player.balance += pending.amount;
+        player.totalEarned += pending.amount;
+        player.referralEarned += pending.amount;
+        player.referralCount += pending.count;
+        localStorage.setItem(pendingKey(player.referralCode), JSON.stringify({ count: 0, amount: 0 }));
+        savePlayer();
+        renderAll();
+      }
+    } catch (e) {}
+  }
+
+  // ---------- State + Season-1 -> Season-2 migration ----------
+  var existingRaw = loadPlayer();
+  var player = existingRaw || defaultPlayer();
+
+  // fill in any newly-introduced fields for players saved before this update
+  var fresh = defaultPlayer();
+  for (var k in fresh) { if (!(k in player)) player[k] = fresh[k]; }
+
+  var needsIntro = false;
+  var introOldEarned = 0, introOldTaps = 0, introConvertedAmount = 0;
+
+  if (!player.season2Migrated) {
+    if (existingRaw && (existingRaw.totalEarned > 0 || existingRaw.totalTaps > 0)) {
+      introOldEarned = existingRaw.totalEarned || 0;
+      introOldTaps = existingRaw.totalTaps || 0;
+      introConvertedAmount = Math.floor(introOldEarned / CONVERSION_RATE);
+      needsIntro = true;
+    } else {
+      player.season2Migrated = true; // brand new player, nothing to convert
+    }
+  }
+
+  if (!player.referralCode) {
+    var code = randomCode(), tries = 0;
+    while (codeExists(code) && tries < 8) { code = randomCode(); tries++; }
+    player.referralCode = code;
+    registerCode(code);
+    savePlayer();
+  }
+
+  var floaterId = 0;
+  var topCoinContainer = document.getElementById("topCoinContainer");
+  var coinInnerEl = document.getElementById("coinInner");
+
+  // ---------- Rendering ----------
+  function renderCoin() {
+    topCoinContainer.innerHTML = skinMarkup(player.skin, true);
+    coinInnerEl.innerHTML = skinMarkup(player.skin, false);
+  }
+
+  function renderTop() {
+    var league = LEAGUES[getLeagueIndex(player.totalEarned)];
+    document.getElementById("leagueName").textContent = league.name;
+    document.getElementById("leagueName").style.color = league.color;
+    document.getElementById("trophyIconTop").style.color = league.color;
+    document.getElementById("balanceVal").textContent = fmt(player.balance);
+  }
+
+  function renderTapPanel() {
+    document.getElementById("perTapVal").textContent = "+" + player.clickPower;
+    document.getElementById("totalTapsVal").textContent = fmt(player.totalTaps);
+  }
+
+  function renderBoostPanel() {
+    document.getElementById("tapLevelSub").textContent = "Уровень " + player.tapLevel + " · сейчас +" + player.clickPower + " за тап";
+    var tapBtn = document.getElementById("buyTapBtn");
+    tapBtn.textContent = "Улучшить · " + fmt(tapCost(player.tapLevel)) + " IGNIS";
+    tapBtn.disabled = player.balance < tapCost(player.tapLevel);
+
+    var autoSub = player.autoClickerLevel > 0
+      ? "Уровень " + player.autoClickerLevel + " · +" + (player.clickPower * player.autoClickerLevel) + "/сек"
+      : "Выключен";
+    document.getElementById("autoLevelSub").textContent = autoSub;
+    var autoBtn = document.getElementById("buyAutoBtn");
+    autoBtn.textContent = (player.autoClickerLevel > 0 ? "Улучшить" : "Включить") + " · " + fmt(autoCost(player.autoClickerLevel)) + " IGNIS";
+    autoBtn.disabled = player.balance < autoCost(player.autoClickerLevel);
+
+    var grid = document.getElementById("skinsGrid");
+    grid.innerHTML = "";
+    for (var i = 0; i <= SKIN_COUNT; i++) {
+      var item = document.createElement("div");
+      item.className = "skin-item" + (player.skin === i ? " selected" : "");
+      item.innerHTML = skinMarkup(i, false);
+      (function (idx) {
+        item.addEventListener("click", function () {
+          player.skin = idx;
+          savePlayer();
+          renderCoin();
+          renderBoostPanel();
+        });
+      })(i);
+      grid.appendChild(item);
+    }
+  }
+
+  function renderSeason1Recap() {
+    var wrap = document.getElementById("season1RecapWrap");
+    if (!player.season1Recap) { wrap.innerHTML = ""; return; }
+    var r = player.season1Recap;
+    wrap.innerHTML =
+      '<div class="league-progress">' +
+      '<div class="league-progress-top"><span class="a">Итоги Сезона 1</span><span class="b">конвертация 1 : 10 000</span></div>' +
+      '<div class="stat-grid" style="margin-top:10px">' +
+      '<div class="stat-box"><div class="lbl">Заработано (S1)</div><div class="val">' + fmt(r.earned) + '</div></div>' +
+      '<div class="stat-box"><div class="lbl">Тапов (S1)</div><div class="val">' + fmt(r.taps) + '</div></div>' +
+      '</div>' +
+      '<div class="stat-box" style="margin-top:12px"><div class="lbl">Стартовый баланс Сезона 2</div><div class="val">' + fmt(r.converted) + ' IGNIS</div></div>' +
+      '</div>';
+  }
+
+  function renderQuestsPanel() {
+    var list = document.getElementById("questsList");
+    list.innerHTML = "";
+    QUESTS.forEach(function (q) {
+      var done = player.completedQuests.indexOf(q.id) !== -1;
+      var card = document.createElement("div");
+      card.className = "boost-card";
+      card.innerHTML =
+        '<div class="boost-head">' +
+        '<div class="boost-icon quest"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:#c4b5fd"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+        '<div><div class="boost-title">' + q.title + '</div><div class="boost-sub">' + q.sub + ' · +' + fmt(q.reward) + ' IGNIS</div></div>' +
+        '</div>' +
+        (done
+          ? '<div class="quest-status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Выполнено</div>'
+          : '<div class="quest-actions">' +
+            '<button class="boost-btn" data-quest-open="' + q.id + '" style="flex:1">Перейти</button>' +
+            '<button class="boost-btn auto-btn" data-quest-check="' + q.id + '" style="flex:1">Проверить</button>' +
+            '</div>'
+        );
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll("[data-quest-open]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-quest-open");
+        var q = QUESTS.filter(function (x) { return x.id === id; })[0];
+        if (!q) return;
+        player.openedQuests[id] = Date.now();
+        savePlayer();
+        if (tg && tg.openTelegramLink) { try { tg.openTelegramLink(q.link); return; } catch (e) {} }
+        window.open(q.link, "_blank");
+      });
+    });
+    list.querySelectorAll("[data-quest-check]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-quest-check");
+        var q = QUESTS.filter(function (x) { return x.id === id; })[0];
+        if (!q) return;
+        var openedAt = player.openedQuests[id];
+        if (!openedAt) {
+          btn.textContent = "Сначала нажми «Перейти»";
+          setTimeout(function () { renderQuestsPanel(); }, 1600);
+          return;
+        }
+        if (Date.now() - openedAt < QUEST_CHECK_DELAY_MS) {
+          btn.textContent = "Подожди немного...";
+          setTimeout(function () { renderQuestsPanel(); }, 1600);
+          return;
+        }
+        player.completedQuests.push(id);
+        player.balance += q.reward;
+        player.totalEarned += q.reward;
+        savePlayer();
+        renderAll();
+      });
+    });
+  }
+
+
+  function renderLeaguePanel() {
+    var idx = getLeagueIndex(player.totalEarned);
+    var league = LEAGUES[idx];
+    var next = LEAGUES[idx + 1];
+    var wrap = document.getElementById("leagueProgressWrap");
+    if (next) {
+      var pct = Math.min(100, (player.totalEarned - league.threshold) / (next.threshold - league.threshold) * 100);
+      wrap.innerHTML =
+        '<div class="league-progress">' +
+        '<div class="league-progress-top"><span class="a">До лиги «' + next.name + '»</span><span class="b">' + fmt(Math.max(0, next.threshold - player.totalEarned)) + ' IGNIS</span></div>' +
+        '<div class="league-progress-track"><div class="league-progress-fill" style="width:' + pct + '%;background:' + league.bar + '"></div></div>' +
+        '</div>';
+    } else {
+      wrap.innerHTML = "";
+    }
+    var list = document.getElementById("leagueList");
+    list.innerHTML = "";
+    LEAGUES.forEach(function (l, i) {
+      var reached = player.totalEarned >= l.threshold;
+      var current = i === idx;
+      var row = document.createElement("div");
+      row.className = "league-row" + (current ? " current" : "");
+      row.innerHTML =
+        '<div class="league-row-left">' +
+        '<div class="league-icon' + (reached ? '' : ' dim') + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="color:' + l.color + '"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+        '<div><div class="league-name' + (reached ? ' reached' : '') + '">' + l.name + '</div><div class="league-thresh">от ' + fmt(l.threshold) + ' IGNIS</div></div>' +
+        '</div>' +
+        (current ? '<span class="league-current-tag">Сейчас</span>' : '');
+      list.appendChild(row);
+    });
+  }
+
+  function renderReferralPanel() {
+    document.getElementById("refExplain").textContent =
+      "Поделись кодом — друг получит +" + fmt(REFERRAL_BONUS_FOR_INVITEE) + " IGNIS, а ты +" + fmt(REFERRAL_BONUS_FOR_INVITER) + " IGNIS за каждого";
+    document.getElementById("refCodeText").textContent = player.referralCode;
+    document.getElementById("refCountVal").textContent = fmt(player.referralCount);
+    document.getElementById("refEarnedVal").textContent = fmt(player.referralEarned);
+    document.getElementById("refInputHint").textContent = player.referredBy
+      ? "Ты уже активировал код " + player.referredBy
+      : "Введи код друга и получи бонус";
+    var input = document.getElementById("refInputField");
+    input.disabled = !!player.referredBy;
+    document.getElementById("submitRefBtn").disabled = !!player.referredBy;
+  }
+
+  function renderAll() {
+    renderCoin();
+    renderTop();
+    renderTapPanel();
+    renderBoostPanel();
+    renderSeason1Recap();
+    renderQuestsPanel();
+    renderLeaguePanel();
+    renderReferralPanel();
+  }
+
+  // ---------- Tab switching ----------
+  document.querySelectorAll(".nav-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var tabId = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tabpanel").forEach(function (p) {
+        p.classList.toggle("hidden", p.getAttribute("data-panel") !== tabId);
+      });
+      document.querySelectorAll(".nav-btn").forEach(function (b) {
+        var isActive = b === btn;
+        var icon = b.querySelector("svg");
+        var label = b.querySelector(".nav-label");
+        icon.classList.toggle("active-icon", isActive);
+        icon.classList.toggle("dim-icon", !isActive);
+        label.classList.toggle("active-icon", isActive);
+        label.classList.toggle("dim-icon", !isActive);
+      });
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} }
+    });
+  });
+
+  // ---------- Tap handling (no energy limit) ----------
+  var coinBtn = document.getElementById("coinBtn");
+  function doTap(power, clientX, clientY) {
+    player.balance += power;
+    player.totalEarned += power;
+    player.totalTaps += 1;
+    savePlayer();
+    renderTop();
+    renderTapPanel();
+
+    if (clientX !== undefined) {
+      var rect = coinBtn.getBoundingClientRect();
+      var rawX = clientX - rect.left;
+      var rawY = clientY - rect.top;
+      var x = Math.min(Math.max(rawX, 24), rect.width - 24);
+      var y = Math.min(Math.max(rawY, 24), rect.height - 24);
+      var f = document.createElement("span");
+      f.className = "floater";
+      f.style.left = x + "px";
+      f.style.top = y + "px";
+      f.textContent = "+" + power;
+      coinBtn.appendChild(f);
+      setTimeout(function () { f.remove(); }, 850);
+    }
+  }
+
+  coinBtn.addEventListener("click", function (e) {
+    doTap(player.clickPower, e.clientX, e.clientY);
+    coinInnerEl.classList.add("pressed");
+    setTimeout(function () { coinInnerEl.classList.remove("pressed"); }, 90);
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch (e) {} }
+  });
+
+  // ---------- Boosts ----------
+  document.getElementById("buyTapBtn").addEventListener("click", function () {
+    var cost = tapCost(player.tapLevel);
+    if (player.balance < cost) return;
+    player.balance -= cost;
+    player.clickPower += 1;
+    player.tapLevel += 1;
+    savePlayer();
+    renderAll();
+  });
+  document.getElementById("buyAutoBtn").addEventListener("click", function () {
+    var cost = autoCost(player.autoClickerLevel);
+    if (player.balance < cost) return;
+    player.balance -= cost;
+    player.autoClickerLevel += 1;
+    savePlayer();
+    renderAll();
+  });
+
+  // Autoclicker tick: adds clickPower * level every second
+  setInterval(function () {
+    if (player.autoClickerLevel > 0) {
+      doTap(player.clickPower * player.autoClickerLevel);
+      renderBoostPanel();
+    }
+  }, 1000);
+
+  // ---------- Promo ----------
+  document.getElementById("submitPromoBtn").addEventListener("click", function () {
+    var input = document.getElementById("promoInputField");
+    var code = input.value.trim().toUpperCase();
+    var msgEl = document.getElementById("promoMsg");
+    msgEl.classList.remove("hidden", "ok", "err");
+    if (!code) { msgEl.textContent = "Введите промокод"; msgEl.classList.add("err"); return; }
+    if (player.usedPromoCodes.indexOf(code) !== -1) { msgEl.textContent = "Этот промокод уже активирован"; msgEl.classList.add("err"); return; }
+    var found = null;
+    for (var i = 0; i < PROMO_CODES.length; i++) { if (PROMO_CODES[i].code === code) { found = PROMO_CODES[i]; break; } }
+    if (found) {
+      player.balance += found.reward;
+      player.totalEarned += found.reward;
+      player.usedPromoCodes.push(code);
+      savePlayer();
+      renderAll();
+      msgEl.textContent = "Промокод принят! +" + fmt(found.reward) + " IGNIS";
+      msgEl.classList.add("ok");
+      input.value = "";
+    } else {
+      msgEl.textContent = "Промокод недействителен";
+      msgEl.classList.add("err");
+    }
+  });
+
+  // ---------- Referral ----------
+  document.getElementById("submitRefBtn").addEventListener("click", function () {
+    var input = document.getElementById("refInputField");
+    var code = input.value.trim().toUpperCase();
+    var msgEl = document.getElementById("refMsg");
+    msgEl.classList.remove("hidden", "ok", "err");
+    if (player.referredBy) { msgEl.textContent = "Ты уже активировал реферальный код"; msgEl.classList.add("err"); return; }
+    if (!code) { msgEl.textContent = "Введите код"; msgEl.classList.add("err"); return; }
+    if (code === player.referralCode) { msgEl.textContent = "Нельзя использовать свой собственный код"; msgEl.classList.add("err"); return; }
+    if (!codeExists(code)) { msgEl.textContent = "Такого кода не существует"; msgEl.classList.add("err"); return; }
+
+    player.referredBy = code;
+    player.balance += REFERRAL_BONUS_FOR_INVITEE;
+    player.totalEarned += REFERRAL_BONUS_FOR_INVITEE;
+    savePlayer();
+    renderAll();
+    msgEl.textContent = "Код принят! +" + fmt(REFERRAL_BONUS_FOR_INVITEE) + " IGNIS";
+    msgEl.classList.add("ok");
+    addPendingReward(code);
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var text = player.referralCode;
+    var icon = document.getElementById("copyIcon");
+    function showCopied() {
+      icon.innerHTML = '<path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+      icon.style.color = "#fbbf24";
+      setTimeout(function () {
+        icon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>';
+        icon.style.color = "";
+      }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showCopied).catch(function () {});
+    } else {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+        showCopied();
+      } catch (e) {}
+    }
+  });
+
+  // ---------- Autosave tick ----------
+  setInterval(savePlayer, 4000);
+
+  // ---------- Pending referral rewards ----------
+  claimPending();
+  setInterval(claimPending, 15000);
+
+  // ---------- Season countdown: global, identical for every player ----------
+  function tickTimer() {
+    var now = Date.now();
+    var diff;
+    if (now < SEASON2_START) {
+      diff = SEASON2_DURATION; // full time shown until 15:00 MSK, then it starts counting down
+    } else {
+      diff = Math.max(0, SEASON2_END - now);
+    }
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    document.getElementById("td").textContent = d;
+    document.getElementById("th").textContent = String(h).padStart(2, "0");
+    document.getElementById("tm").textContent = String(m).padStart(2, "0");
+    document.getElementById("ts").textContent = String(s).padStart(2, "0");
+
+    var elapsedPct = now < SEASON2_START ? 0 : Math.min(100, 100 - (diff / SEASON2_DURATION) * 100);
+    document.getElementById("seasonBar").style.width = elapsedPct + "%";
+  }
+  tickTimer();
+  setInterval(tickTimer, 1000);
+
+  // ---------- Init ----------
+  renderAll();
+  document.getElementById("loading").classList.add("hidden");
+
+  if (needsIntro) {
+    document.getElementById("introOldEarned").textContent = fmt(introOldEarned);
+    document.getElementById("introOldTaps").textContent = fmt(introOldTaps);
+    document.getElementById("introConverted").textContent = fmt(introConvertedAmount) + " IGNIS";
+    document.getElementById("introOverlay").classList.remove("hidden");
+    document.getElementById("introContinueBtn").addEventListener("click", function () {
+      player.balance = introConvertedAmount;
+      player.totalEarned = introConvertedAmount;
+      player.totalTaps = 0;
+      player.clickPower = 1;
+      player.tapLevel = 1;
+      player.autoClickerLevel = 0;
+      player.season2Migrated = true;
+      player.season1Recap = { earned: introOldEarned, taps: introOldTaps, converted: introConvertedAmount };
+      savePlayer();
+      renderAll();
+      document.getElementById("introOverlay").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+    });
+  } else {
+    savePlayer();
+    document.getElementById("app").classList.remove("hidden");
+  }
+
+  window.addEventListener("beforeunload", savePlayer);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) savePlayer();
+  });
+})();
+</script>
+</body>
+</html>
